@@ -1,101 +1,188 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useState, useEffect, useCallback } from "react";
+
+const GAME_WIDTH = 600;
+const GAME_HEIGHT = 600;
+const TILE_SIZE = 50;
+
+const Frogger: React.FC = () => {
+  const [frogPosition, setFrogPosition] = useState({
+    x: GAME_WIDTH / 2 - TILE_SIZE / 2,
+    y: GAME_HEIGHT - TILE_SIZE,
+  });
+  const [cars, setCars] = useState([
+    { x: 0, y: GAME_HEIGHT - 150, speed: 3, width: TILE_SIZE * 2 },
+    { x: 200, y: GAME_HEIGHT - 200, speed: 4, width: TILE_SIZE * 3 },
+    { x: 400, y: GAME_HEIGHT - 250, speed: 5, width: TILE_SIZE * 2 },
+  ]);
+  const [score, setScore] = useState(0);
+  const [lives, setLives] = useState(3);
+  const [gameOver, setGameOver] = useState(false);
+
+  const resetFrogPosition = () => {
+    setFrogPosition({ x: GAME_WIDTH / 2 - TILE_SIZE / 2, y: GAME_HEIGHT - TILE_SIZE });
+  };
+
+  const moveFrog = (direction: "up" | "down" | "left" | "right") => {
+    setFrogPosition((prev) => {
+      if (gameOver) return prev;
+
+      let newX = prev.x;
+      let newY = prev.y;
+
+      if (direction === "up") newY -= TILE_SIZE;
+      if (direction === "down") newY += TILE_SIZE;
+      if (direction === "left") newX -= TILE_SIZE;
+      if (direction === "right") newX += TILE_SIZE;
+
+      newX = Math.max(0, Math.min(GAME_WIDTH - TILE_SIZE, newX));
+      newY = Math.max(0, Math.min(GAME_HEIGHT - TILE_SIZE, newY));
+
+      return { x: newX, y: newY };
+    });
+  };
+
+  const updateCars = useCallback(() => {
+    setCars((prevCars) =>
+      prevCars.map((car) => ({
+        ...car,
+        x: (car.x + car.speed) % GAME_WIDTH,
+      }))
+    );
+  }, []);
+
+  const checkCollisions = useCallback(() => {
+    const frogRect = {
+      x: frogPosition.x,
+      y: frogPosition.y,
+      width: TILE_SIZE,
+      height: TILE_SIZE,
+    };
+
+    cars.forEach((car) => {
+      const carRect = {
+        x: car.x,
+        y: car.y,
+        width: car.width,
+        height: TILE_SIZE,
+      };
+
+      if (
+        frogRect.x < carRect.x + carRect.width &&
+        frogRect.x + frogRect.width > carRect.x &&
+        frogRect.y < carRect.y + carRect.height &&
+        frogRect.y + frogRect.height > carRect.y
+      ) {
+        setLives((prev) => prev - 1);
+        resetFrogPosition();
+        if (lives <= 1) {
+          setGameOver(true);
+        }
+      }
+    });
+
+    // Check if frog reached the goal
+    if (frogPosition.y <= 0) {
+      setScore((prev) => prev + 1);
+      resetFrogPosition();
+    }
+  }, [frogPosition, cars, lives]);
+
+  useEffect(() => {
+    if (gameOver) return;
+
+    const interval = setInterval(() => {
+      updateCars();
+      checkCollisions();
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [updateCars, checkCollisions, gameOver]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowUp") moveFrog("up");
+      if (e.key === "ArrowDown") moveFrog("down");
+      if (e.key === "ArrowLeft") moveFrog("left");
+      if (e.key === "ArrowRight") moveFrog("right");
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [gameOver]);
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        backgroundColor: "#000",
+        color: "#fff",
+        textAlign: "center",
+      }}
+    >
+      <h1>Frogger</h1>
+      <div style={{ marginBottom: "20px" }}>
+        <p>
+          <strong>Controls:</strong> Arrow Keys to Move
+        </p>
+      </div>
+      <h2>
+        Score: {score} | Lives: {lives}
+      </h2>
+      {gameOver && <h3>Game Over! Refresh to play again.</h3>}
+      <div
+        style={{
+          position: "relative",
+          width: `${GAME_WIDTH}px`,
+          height: `${GAME_HEIGHT}px`,
+          backgroundColor: "#222",
+          border: "2px solid #fff",
+        }}
+      >
+        {/* Goal */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: `${TILE_SIZE}px`,
+            backgroundColor: "lightgreen",
+          }}
         />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+        {/* Frog */}
+        <div
+          style={{
+            position: "absolute",
+            left: frogPosition.x,
+            top: frogPosition.y,
+            width: `${TILE_SIZE}px`,
+            height: `${TILE_SIZE}px`,
+            backgroundColor: "green",
+          }}
+        />
+        {/* Cars */}
+        {cars.map((car, index) => (
+          <div
+            key={index}
+            style={{
+              position: "absolute",
+              left: car.x,
+              top: car.y,
+              width: `${car.width}px`,
+              height: `${TILE_SIZE}px`,
+              backgroundColor: "red",
+            }}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        ))}
+      </div>
     </div>
   );
-}
+};
+
+export default Frogger;
