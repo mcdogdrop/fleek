@@ -125,7 +125,7 @@ const Frogger: React.FC = () => {
         textAlign: "center",
       }}
     >
-      <h1>Frogger</h1>
+      <h1>- Frogger -</h1>
       <div style={{ marginBottom: "20px" }}>
         <p>
           <strong>Controls:</strong> Arrow Keys to Move
